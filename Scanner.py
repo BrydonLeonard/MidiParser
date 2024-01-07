@@ -92,8 +92,8 @@ class Scanner:
 
         # The spec uses hex representation, so we match with that for convenience
         match message_type:
-            case 0x8: return NoteOnMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1)))
-            case 0x9: return NoteOffMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1), False))
+            case 0x8: return NoteOffMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1), False))
+            case 0x9: return NoteOnMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1)))
             case 0xA: return KeyAfterTouchMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1)))
             case 0xB: return ControlChangeMessage(channel, ControlChangeData(self.consume_to_int(1), self.consume_to_int(1)))
             case 0xC: return ProgramChangeMessage(channel, ProgramChangeData(self.consume_to_int(1)))
