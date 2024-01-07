@@ -63,4 +63,4 @@ class TrackCompleteMessage(MetaMessage):
         self.data = ""
 
     def __repr__(self):
-        return "END OF TRACK"
+        return "[Meta] END OF TRACK"

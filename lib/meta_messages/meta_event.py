@@ -7,3 +7,6 @@ class MetaEvent():
 
     def str_with_pre_time(self, time):
         return f"[{str(self.delta_time + time).rjust(10, '0')}] {self.message.__repr__()}"
+    
+    def __repr__(self):
+        return f"Delta time = {str(self.delta_time).rjust(4, '0')}. {self.message.__repr__()}"

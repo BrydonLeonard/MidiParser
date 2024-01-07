@@ -1,4 +1,4 @@
-from lib.midi_file import MidiFile
+from lib.midi_file import MidiFile, FILE_FORMATS
 from lib.messages.message import *
 from lib.messages.data import *
 from lib.track import Track
@@ -6,6 +6,7 @@ from lib.messages.event import MidiEvent
 from lib.meta_messages.meta_message import *
 from lib.meta_messages.meta_data import *
 from lib.meta_messages.meta_event import *
+from lib.data_describer import DataDescriber
 
 FILE_HEADER = '4D 54 68 64 00 00 00 06'
 TRACK_HEADER = '4D 54 72 6B'
@@ -16,6 +17,7 @@ class Scanner:
     def __init__(self, data: 'list[int]'):
         self.data = data
         self.ptr = 0
+        self.data_descriptions = []
 
     def parse(self):
         return self.parse_file()
@@ -26,24 +28,35 @@ class Scanner:
         track_count = bytes_to_int(self.consume(2))
         ticks_per_crotchet = bytes_to_int(self.consume(2))
 
+        self.data_descriptions.append(DataDescriber.from_str(FILE_HEADER, "MIDI file standard header"))
+        self.data_descriptions.append(DataDescriber.from_int(format,  f"{format} ({FILE_FORMATS[format]})", 2))
+        self.data_descriptions.append(DataDescriber.from_int(track_count, f"There are {track_count} tracks", 2))
+        self.data_descriptions.append(DataDescriber.from_int(ticks_per_crotchet, f"There are {ticks_per_crotchet} ticks per crotchet", 2))
+
         tracks = []
 
+        track_index = 0
         while self.ptr < len(self.data):
-            tracks.append(self.parse_track())
+            track_index = track_index + 1
+            tracks.append(self.parse_track(track_index))
 
-        return MidiFile(format, track_count, ticks_per_crotchet, tracks)
+        return (MidiFile(format, track_count, ticks_per_crotchet, tracks), self.data_descriptions)
     
-    def parse_track(self):
+    def parse_track(self, track_index):
         events = []
         track_complete = False
         if self.peek(4) == hex_string_to_bytes(TRACK_HEADER):
             self.validate_and_consume(hex_string_to_bytes(TRACK_HEADER))
+            self.data_descriptions.append(DataDescriber.from_str(TRACK_HEADER, f"Standard track header. Track {track_index} starting"))
 
             track_length = self.consume_to_int(4)
+            self.data_descriptions.append(DataDescriber.from_int(track_length, f"The track is {track_length} bytes long", 4))
 
             while not track_complete:
+                start_position = self.ptr
                 event = self.parse_event()
                 events.append(event)
+                self.data_descriptions.append(DataDescriber(self.data[start_position:self.ptr], "  " + event.__repr__(), self.ptr - start_position))
                 track_complete = type(event.message) is TrackCompleteMessage
 
             return Track(track_length, events)
@@ -63,7 +76,7 @@ class Scanner:
         sum = 0
         next_digit = self.consume_to_int(1)
         while (next_digit & 0b10000000 > 0): # Last digit of the delta time has 0 in the most significant position
-            sum = (sum << 7) + (self.data[self.ptr] & 0b01111111) # We ignore that first bit
+            sum = (sum << 7) + (next_digit & 0b01111111) # We ignore that first bit
             next_digit = self.consume_to_int(1)
         
         final = (sum << 7) + (next_digit & 0b01111111)
@@ -80,7 +93,7 @@ class Scanner:
         # The spec uses hex representation, so we match with that for convenience
         match message_type:
             case 0x8: return NoteOnMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1)))
-            case 0x9: return NoteOffMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1)))
+            case 0x9: return NoteOffMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1), False))
             case 0xA: return KeyAfterTouchMessage(channel, NoteData(self.consume_to_int(1), self.consume_to_int(1)))
             case 0xB: return ControlChangeMessage(channel, ControlChangeData(self.consume_to_int(1), self.consume_to_int(1)))
             case 0xC: return ProgramChangeMessage(channel, ProgramChangeData(self.consume_to_int(1)))

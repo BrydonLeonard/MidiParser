@@ -24,3 +24,6 @@ class MidiFile:
             "ticks_per_crotchet": self.ticks_per_crotchet,
             "tracks": list(map(lambda track : track.dict_repr(), self.tracks))
         }, indent = 4)
+    
+    def format_string_repr(self) -> str:
+        return  f"{self.file_format} ({FILE_FORMATS[self.file_format]})"

@@ -3,12 +3,17 @@ class Data():
         self.data = data
 
 class NoteData():
-    def __init__(self, note: int, velocity: int):
+    def __init__(self, note: int, velocity: int, play: bool = True):
         self.note = note
         self.velocity = velocity
+        self.play = play
 
     def __repr__(self):
-        return f"Play {note_index_to_name(self.note)} with velocity {self.velocity}"
+        if (self.play):
+            verb = "Start"
+        else:
+            verb = "Stop"
+        return f"{verb} {note_index_to_name(self.note)} with velocity {self.velocity}"
     
 class ProgramChangeData(Data):
     def __init__(self, new_program: int):
